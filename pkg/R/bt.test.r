@@ -1,23 +1,23 @@
 ###############################################################################
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+# 
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+# 
+# 1. The origin of this software must not be misrepresented; you must not
+#    claim that you wrote the original software. If you use this software
+#    in a product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
-# Evaluting Sample Trading Strategies using Backtesting library in 
-# the Systematic Investor Toolbox
-# Copyright (C) 2011  Michael Kapler
+# Evaluating Sample Trading Strategies using Backtesting library
 #
-# For more information please visit my blog at www.SystematicInvestor.wordpress.com
-# or drop me a line at TheSystematicInvestor at gmail
+# For more information please email at TheSystematicInvestor at gmail
 ###############################################################################
 
 bt.empty.test <- function() 
@@ -1750,7 +1750,9 @@ dev.off()
 }
 
 
-# Rebalancing method based on maximum deviation
+# Maximum Deviation Rebalancing: rebalance to the target mix when asset weights deviate more than a given percentage from the target mix.
+# Also support rebalancing.ratio, same as above, but rebalance half-way to target
+#' @export 	
 bt.max.deviation.rebalancing <- function
 (
 	data,
@@ -1760,7 +1762,8 @@ bt.max.deviation.rebalancing <- function
 	rebalancing.ratio = 0,	# 0 means rebalance all-way to target.allocation
 							# 0.5 means rebalance half-way to target.allocation
 	start.index = 1,
-	period.ends = 1:nrow(model$weight)							
+	period.ends = 1:nrow(model$weight),
+	fast = T							
 ) 
 {
 	nperiods = nrow(model$weight)
@@ -1789,14 +1792,21 @@ bt.max.deviation.rebalancing <- function
 					data$weight[action.index,] = temp + 
 						rebalancing.ratio * (weight[action.index,] - temp)					
 					
-				model = bt.run.share(data, clean.signal=F, silent=T)
+				# please note the bt.run.share.ex somehow gives slighly better results
+				if(fast)
+					model = bt.run.share.fast(data)
+				else
+					model = bt.run.share.ex(data, clean.signal=F, silent=T)
 				
 				start.index = index[1]
 			} else break			
 		} else break		
 	}
+	
+	model = bt.run.share.ex(data, clean.signal=F, silent=F)
 	return(model)
 }
+
 
 
 
@@ -3755,7 +3765,7 @@ bt.fa.value.quantiles.test <- function()
 	periodicity = 'weeks'
 	
 	# load Fama/French factors
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = F, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = F, clean = F)
 	
 	period.ends = endpoints(data$prices, periodicity)
 		period.ends = period.ends[period.ends > 0]
@@ -4148,7 +4158,7 @@ three.factor.rolling.regression <- function() {
 	#*****************************************************************
 	# Fama/French factors
 	#****************************************************************** 
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = T, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = T, clean = F)
 
 	# add factors and align
 	data <- new.env()
@@ -4179,9 +4189,9 @@ dev.off()
 	#*****************************************************************
 	# Fama/French factors + Momentum
 	#****************************************************************** 
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = F, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = F, clean = F)
 
-	factors.extra = get.fama.french.data('F-F_Momentum_Factor', periodicity = periodicity,download = T, clean = F)	
+	factors.extra = get.fama.french.data('F-F_Momentum_Factor', periodicity = periodicity,force.download = T, clean = F)	
 		factors$data = merge(factors$data, factors.extra$data) 
 	
 	# add factors and align
@@ -4271,7 +4281,7 @@ your.own.factor.rolling.regression <- function() {
 	#*****************************************************************
 	# Fama/French factors
 	#****************************************************************** 
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = F, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = F, clean = F)
 
 	factors.extra = 100 * read.xts('EEM_SPY.csv')
 		factors$data = merge(factors$data, factors.extra, join='inner')
@@ -4565,7 +4575,7 @@ bt.fa.one.month.test <- function()
 	# Load factors and align them with prices
 	#****************************************************************** 	
 	# load Fama/French factors
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = F, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = F, clean = F)
 	
 	# align monthly dates
 	map = match(format(index(factors$data), '%Y%m'), format(index(prices), '%Y%m'))
@@ -4728,7 +4738,7 @@ bt.fa.sector.one.month.test <- function()
 	# Load factors and align them with prices
 	#****************************************************************** 	
 	# load Fama/French factors
-	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,download = T, clean = F)
+	factors = get.fama.french.data('F-F_Research_Data_Factors', periodicity = periodicity,force.download = T, clean = F)
 	
 	
 	# align monthly dates
@@ -5319,8 +5329,9 @@ bt.aaa.minrisk <- function
 	            ia$cov = cor(coredata(hist), use='complete.obs',method='pearson') * (s0 %*% t(s0))
 	       
 			# create constraints: 0<=x<=1, sum(x) = 1
-			constraints = new.constraints(n, lb = 0, ub = 1)
-			constraints = add.constraints(rep(1, n), 1, type = '=', constraints)       
+			#constraints = new.constraints(n, lb = 0, ub = 1)
+			#constraints = add.constraints(rep(1, n), 1, type = '=', constraints)       
+			constraints = create.basic.constraints(n, 0, 1, 1)
 			
 			# compute minimum variance weights				            
 	        weight[i,] = 0        
@@ -5481,6 +5492,7 @@ bt.aaa.test <- function()
 	# Load historical data
 	#****************************************************************** 
 	load.packages('quantmod')
+	load.packages('quadprog,corpcor,lpSolve,kernlab')
 	
 	tickers = spl('SPY,EFA,EWJ,EEM,IYR,RWX,IEF,TLT,DBC,GLD')
 
@@ -5488,7 +5500,7 @@ bt.aaa.test <- function()
 	getSymbols(tickers, src = 'yahoo', from = '1980-01-01', env = data, auto.assign = T)
 	
 	
-	# contruct another back-test enviroment with split-adjusted prices, do not include dividends
+	# contruct another back-test environment with split-adjusted prices, do not include dividends
 	# http://www.fintools.com/wp-content/uploads/2012/02/DividendAdjustedStockPrices.pdf
 	# http://www.pstat.ucsb.edu/research/papers/momentum.pdf
 	data.price <- new.env()
@@ -5604,8 +5616,9 @@ bt.aaa.test <- function()
 	            ia$cov = cor(coredata(hist), use='complete.obs',method='pearson') * (s0 %*% t(s0))
 	       
 			# create constraints: 0<=x<=1, sum(x) = 1
-			constraints = new.constraints(n, lb = 0, ub = 1)
-			constraints = add.constraints(rep(1, n), 1, type = '=', constraints)       
+			#constraints = new.constraints(n, lb = 0, ub = 1)
+			#constraints = add.constraints(rep(1, n), 1, type = '=', constraints)       
+			constraints = create.basic.constraints(n, 0, 1, 1)
 			
 			# compute minimum variance weights				            
 	        weight[i,] = 0        
@@ -5652,6 +5665,7 @@ bt.aaa.test.new <- function()
 	# Load historical data
 	#****************************************************************** 
 	load.packages('quantmod')
+	load.packages('quadprog,corpcor,lpSolve,kernlab')
 	
 	tickers = spl('SPY,EFA,EWJ,EEM,IYR,RWX,IEF,TLT,DBC,GLD')
 
@@ -8480,13 +8494,13 @@ bt.mebanefaber.modified.mn.test <- function()
 	data = new.env()
 		
 	# load historical market returns
-	temp = get.fama.french.data('F-F_Research_Data_Factors', periodicity = '',download = T, clean = T)
+	temp = get.fama.french.data('F-F_Research_Data_Factors', periodicity = '',force.download = T, clean = T)
 		ret = temp[[1]]$Mkt.RF + temp[[1]]$RF
 		price = bt.apply.matrix(ret / 100, function(x) cumprod(1 + x))
 	data$SPY = make.stock.xts( price )
 	
 	# load historical momentum returns
-	temp = get.fama.french.data('10_Portfolios_Prior_12_2', periodicity = '',download = T, clean = T)		
+	temp = get.fama.french.data('10_Portfolios_Prior_12_2', periodicity = '',force.download = T, clean = T)		
 		ret = temp[[1]]
 		price = bt.apply.matrix(ret / 100, function(x) cumprod(1 + x))
 	data$HI.MO = make.stock.xts( price$High )
@@ -8565,14 +8579,14 @@ bt.mebanefaber.f.squared.test <- function()
 	download = T
 	
 	# load historical market returns
-	temp = get.fama.french.data('F-F_Research_Data_Factors', periodicity = '',download = download, clean = T)
+	temp = get.fama.french.data('F-F_Research_Data_Factors', periodicity = '',force.download = download, clean = T)
 		ret = cbind(temp[[1]]$Mkt.RF + temp[[1]]$RF, temp[[1]]$RF)
 		price = bt.apply.matrix(ret / 100, function(x) cumprod(1 + x))
 	data$SPY = make.stock.xts( price$Mkt.RF )
 	data$SHY = make.stock.xts( price$RF )
 	
 	# load historical momentum returns
-	temp = get.fama.french.data('10_Industry_Portfolios', periodicity = '',download = download, clean = T)		
+	temp = get.fama.french.data('10_Industry_Portfolios', periodicity = '',force.download = download, clean = T)		
 		ret = temp[[1]]
 		price = bt.apply.matrix(ret[,1:9] / 100, function(x) cumprod(1 + x))
 	for(n in names(price)) data[[n]] = make.stock.xts( price[,n] )
@@ -9202,7 +9216,7 @@ dev.off()
 ###############################################################################
 # Strategy Testing Intraday data from http://thebonnotgang.com/tbg/historical-data/
 ###############################################################################
-bt.strategy.intraday.thebonnotgang.test <- function() 
+bt.strategy.intraday.thebonnotgang.test <- function(spath = 'c:/Desktop/') 
 {
 	#*****************************************************************
 	# Load historical data
@@ -9210,10 +9224,7 @@ bt.strategy.intraday.thebonnotgang.test <- function()
 	load.packages('quantmod')	
 
 	# data from http://thebonnotgang.com/tbg/historical-data/
-	# please save SPY and GLD 1 min data at the given path
-	spath = 'c:/Desktop/'
-spath = 'c:/Documents and Settings/mkapler/Desktop/'
-spath = 'c:/Desktop/1car/1shaun/'
+	# please save SPY and GLD 1 min data at the given path	
 	data = bt.load.thebonnotgang.data('SPY,GLD', spath)
 	
 	data1 <- new.env()		
@@ -9300,7 +9311,7 @@ dev.off()
 }
 	
 	
-bt.pair.strategy.intraday.thebonnotgang.test <- function() 
+bt.pair.strategy.intraday.thebonnotgang.test <- function(spath = 'c:/Desktop/') 
 {
 	#*****************************************************************
 	# Load historical data
@@ -9309,8 +9320,6 @@ bt.pair.strategy.intraday.thebonnotgang.test <- function()
 
 	# data from http://thebonnotgang.com/tbg/historical-data/
 	# please save SPY and GLD 1 min data at the given path
-	spath = 'c:/Desktop/'
-spath = 'c:/Documents and Settings/mkapler/Desktop/'	
 	data = bt.load.thebonnotgang.data('USO,GLD', spath)
 	bt.prep(data, align='keep.all', fill.gaps = T)
 
@@ -9985,3 +9994,156 @@ print(plotbt.strategy.sidebyside(models, make.plot=F, return.table=T))
 print('Monthly Results for', m, ':')
 print(plotbt.monthly.table(models[[m]]$equity, make.plot = F))
 }
+
+
+
+
+###############################################################################
+# Dual Momentum
+#
+# http://www.scottsinvestments.com/2012/12/21/dual-momentum-investing-with-mutual-funds/
+#
+# http://itawealth.com/2014/11/10/dual-momentum-back-tests-part-1/
+# http://itawealth.com/2014/11/12/dual-momentum-back-tests-part-2-adding-diversification-dual-momentum-strategy/
+# http://itawealth.com/2015/04/20/deciphering-the-dual-momentum-model/
+#
+###############################################################################
+bt.dual.momentum.test <- function() 
+{
+	#*****************************************************************
+	# Load historical data
+	#****************************************************************** 
+	load.packages('quantmod')
+		
+	tickers = '
+	# Equity Risk = US Equity = VTI; Equity ex US = VEA 
+	EQ.US = VTI
+	EQ.EX.US = VEA
+	
+	# Credit Risk = High Yield Bonds = HYG; Credit Bonds = CIU  
+	HI.YLD = HYG
+	CREDIT = CIU
+	
+	# Real Estate Risk = Equity REITs =  VNQ; mortgage REITs = REM 
+	REIT.EQ = VNQ
+	REIT.MTG = REM
+	
+	# Economic Stress = Gold = GLD; Long Term Treasuries =TLT  
+	GOLD = GLD
+	LT.GOV = TLT
+	
+	# Cash: T-Bills (SHY)
+	CASH = SHY + VFISX
+	'
+	
+		
+	data = env()
+	getSymbols.extra(tickers, src = 'yahoo', from = '1980-01-01', env = data, set.symbolnames = T, auto.assign = T)
+		#print(bt.start.dates(data))
+		for(i in data$symbolnames) data[[i]] = adjustOHLC(data[[i]], use.Adjusted=T)
+	bt.prep(data, align='keep.all', fill.gaps = T)
+	data = bt.prep.trim(data, '2006::')
+
+	
+	
+	# define risk groups, do not define group for CASH
+	risk.groups = transform(data$prices[1,] * NA, 
+		EQ.US=1, EQ.EX.US=1,
+		HI.YLD=2, CREDIT=2,
+		REIT.EQ=3, REIT.MTG=3,
+		GOLD=4, LT.GOV=4
+		)
+	risk.groups
+
+	# plot asset history
+	#plota.matplot(scale.one(data$prices),main='Asset Performance')
+
+	#*****************************************************************
+	# Setup
+	#*****************************************************************
+	prices = data$prices
+	
+	period.ends = date.ends(prices, 'month')
+		
+	mom = prices / mlag(prices, 252)
+		# Absolute momentum logic: do not allocate if momentum is below CASH momentum
+		mom[mom < as.vector(mom$CASH)] = NA
+	
+	#*****************************************************************
+	# Code Strategies
+	#****************************************************************** 		
+	custom.weight.portfolio <- function(mom, ntop)
+	{
+		mom = mom
+		ntop = ntop
+		function
+		(
+			ia,				# input assumptions
+			constraints		# constraints
+		)
+		{
+			ntop.helper(mom[ia$nperiod, ia$index], ntop)			
+		}	
+	}	
+	
+	
+
+	# setup universe	
+	universe = !is.na(mom)
+		universe[,'CASH'] = F
+	
+	obj = portfolio.allocation.helper(prices, 
+		period.ends = period.ends, 
+		universe = universe,
+		min.risk.fns = list(
+			EW=equal.weight.portfolio,
+			DM=distribute.weights(
+				static.weight.portfolio(rep(1,4)), # there are 4 clusters
+				static.group(risk.groups), # predefined groups
+				custom.weight.portfolio(mom, 1)				
+			)
+		),
+		adjust2positive.definite = F,
+		silent=T
+	) 		
+	
+	# scale results such that each cluster gets 25% weight
+	obj$weights$DM = obj$weights$DM * 0.25
+
+
+	
+	#*****************************************************************
+	# Sanity check
+	#*****************************************************************	
+if(T) {
+	risk.groups = as.vector(risk.groups)
+		risk.groups = ifna(risk.groups, 0)
+	
+	test = matrix(0, nr=len(period.ends),nc=ncol(prices))
+	for(i in 1:nrow(test)) {
+		for(g in 1:4) {
+			index = risk.groups == g
+			test[i, index] = ntop.helper(mom[period.ends[i], index], 1) * 0.25 # there are 4 sectors, each one gets 1/4
+		}
+	}
+	
+	range( coredata(obj$weights$DM) - test )
+}
+	
+	
+	#*****************************************************************
+	# Absolute momentum logic: move reaming allocation to CASH, so that portfolio is fully invested
+	#*****************************************************************	
+	for(i in names(obj$weights))
+		obj$weights[[i]]$CASH = obj$weights[[i]]$CASH + ( 1 - rowSums(obj$weights[[i]]) )
+
+	
+	models = create.strategies(obj, data )$models
+    
+
+	strategy.performance.snapshoot(models, T)
+
+}
+	
+	
+	

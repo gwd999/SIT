@@ -3,12 +3,14 @@ Type: Package
 Title: Systematic Investor Toolbox
 Description: Systematic Investor Toolbox is a collection of tools that
     I use in my investment research.
-Version: 2015.10.21
-Date: 2015-10-21
-License: GPL-3
+Version: 2018.10.18
+Date: 2018-10-18
+License: Zlib
 LazyLoad: yes
 Author: Michael Kapler <TheSystematicInvestor@gmail.com>
 Maintainer: Michael Kapler <TheSystematicInvestor@gmail.com>
+Depends:
+    SIT.date
 Collate:
     'aa.bl.r'
     'aa.gmpl.r'
@@ -18,6 +20,7 @@ Collate:
     'branchbound.r'
     'bt.r'
     'bt.share.r'
+    'bt.share.test.r'
     'bt.stop.r'
     'bt.stop.test.r'
     'bt.summary.r'

@@ -1,22 +1,23 @@
 ###############################################################################
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+# 
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+# 
+# 1. The origin of this software must not be misrepresented; you must not
+#    claim that you wrote the original software. If you use this software
+#    in a product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 # Repository of Benchmark Strategies
-# Copyright (C) 2012  Michael Kapler
 #
-# For more information please visit my blog at www.SystematicInvestor.wordpress.com
-# or drop me a line at TheSystematicInvestor at gmail
+# For more information please email at TheSystematicInvestor at gmail
 ###############################################################################
 
 
@@ -743,7 +744,7 @@ risk.parity.portfolio <- function(
 				
 		# re-scale weights to penalize for risk		
 		x = 1 / fn(ia)[risk.index]
-			# if an asset has a negative fn this asset�s weight will be 0; 
+			# if an asset has a negative fn this asset’s weight will be 0; 
 			x[x < 0] = 0
 		
 		# normalize weights to sum up to 1
@@ -787,7 +788,23 @@ risk.parity.portfolio <- function(
 		set.risky.asset(sol$solution, risk.index)
 	}	
 
-	
+	# ============================================================
+	#
+	# [Risk Parity Strategies For Equity Portfolio Management Can an asset-class strategy translate to equities? By Frank Siu](http://www.axioma.com/media/uploads/research-papers/risk_parity_strategies_for_equity_portfolio_managenemt_frank_siu1.pdf)
+	# page 8
+	#
+	# Maximum diversification and risk parity are both driven by 
+	# the concept of diversification. Risk parity spreads out risk 
+	# across its various sources; maximum diversification aims to 
+	# reduce the share of portfolio risk coming from correlations.
+	#
+	# Mathematically, Equation 9, maximum diversification, is also analogous 
+	# to maximizing the Sharpe ratio, 
+	# where each stock’s expected return is equal to its volatility.
+	#
+	# Please see Max Sharpe ratio for implementation including linear constraints
+	#
+	# ============================================================
 	# Toward Maximum Diversification by Y. Choueifaty, Y. Coignard
 	# The Journal of Portfolio Management, Fall 2008, Vol. 35, No. 1: pp. 40-51
 	#' @export 	
@@ -1095,6 +1112,19 @@ random.hist.weight = function(
 #
 # Interesting info
 # http://r.789695.n4.nabble.com/The-best-solver-for-non-smooth-functions-td4636934.html
+#
+# 
+# [Maximize the Sharpe Ratio in Axioma Portfolio](http://www.updatefrom.com/axioma/0703/focus.html)
+#
+# min w*E*w
+# s.t. 
+#   mu * w = mean(mu)
+#   e * w - 1000000 * t = 0
+#   s * w - up * t < 0
+#   s * w - dn * t > 0
+#   w, t >= 0
+#
+# final solution is w / t
 ###############################################################################	
 	# only works for constraints that are homogeneous of degree 0
 	# i.e. if we multiply solution weight by a number, the constraint is unchanged
@@ -1144,6 +1174,72 @@ random.hist.weight = function(
 	}
 	
 	
+###############################################################################	
+# [Maximize the Sharpe Ratio in Axioma Portfolio](http://www.updatefrom.com/axioma/0703/focus.html)
+# [Maximize the Sharpe Ratio in Axioma Portfolio](https://www.pdffiller.com/jsfiller-desk7/?projectId=228910415&expId=3950&expBranch=3#e9fcdab7859d4b2ea8aec54bc27c9e11)
+# Prefer to use max.sharpe.portfolio.axioma function because can specify lb/ub constraints
+#
+# min w*E*w
+# s.t. 
+#   mu * w = mean(mu)
+#   e * w - 1000000 * t = 0
+#   s * w - up * t < 0
+#   s * w - dn * t > 0
+#   w, t >= 0
+#
+# final solution is w / t
+#
+# It is unclear what is the maximum Sharpe portfolio if expected returns are negative for all assets.
+# For example, C. Israelsen: "A refinement to the Sharpe ratio and information ratio." 
+# Journal of Asset Management 5.6 (2005): 423-427. suggested using r*sigma as proxy for the Sharpe ratio in this case
+# Source: [ALTERNATIVE VIEWPOINTS: USING THE MODIFIED SHARPE & INFORMATION RATIOS](http://www.allaboutalpha.com/blog/2009/09/02/alternative-viewpoints-using-the-modified-sharpe-information-ratios/)
+# Source: [Risk-adjusted returns ratio that does not reward high risk for negative returns](https://quant.stackexchange.com/questions/32434/risk-adjusted-returns-ratio-that-does-not-reward-high-risk-for-negative-returns)
+#
+###############################################################################		
+	#' @export 	
+	max.sharpe.portfolio.axioma <- function
+	(
+		ia,				# input assumptions
+		constraints,
+		rf = 0,
+		excess.return = ia$expected.return - rf,
+		# in case of expected returns are negative for all assets use
+		negative.all.excess.return.portfolio.fn = 'min.var.portfolio' # 'max.return.portfolio'
+	)
+	{
+		if( all(excess.return <= 0) )
+			return( match.fun(negative.all.excess.return.portfolio.fn)(ia,constraints) )
+				
+		# * add non-negative variable t
+		n = len(constraints$lb)
+		n1 = n+1
+		constraints = add.variables(1, constraints, 0)			
+			constraints = add.constraints(c(rep(0,n),1), type='>=', b=0, constraints)
+
+		# * adjust input assumptions
+		ia1 = ia
+		ia1$n = n1
+		ia1$cov = matrix(0, n1, n1)
+			ia1$cov[1:n, 1:n] = ia$cov
+		ia1$risk = c(ia$risk,1)
+					
+		# * reformulate all constraints: multiply right side by t and moving it to the left
+		constraints$A[n1,] = -constraints$b
+		constraints$b[] = 0
+		
+		# * add return target constraint: mu * w = mean(mu)
+		constraints = add.constraints(c(excess.return,0), mean(excess.return) , type = '=', constraints)		
+		
+		# * add return target constraint: w * expected.return = 1
+		constraints = add.constraints(c(excess.return,0), 1 , type = '=', constraints)
+		
+		# * optimal solution is w/t		
+		weight = min.var.portfolio(ia1,constraints)
+	
+		weight[1:n]/weight[n1]
+	}
+	
+	
 max.sharpe.portfolio.test <- function() 
 {
 	#*****************************************************************
@@ -1181,9 +1277,31 @@ png(filename = 'plot1.png', width = 500, height = 500, units = 'px', pointsize =
 	points(100 * portfolio.risk(weight,ia), 100 * portfolio.return(weight,ia), pch=15, col='orange')
 	portfolio.return(weight,ia) /  portfolio.risk(weight,ia)
 		
+	w1 = max.sharpe.portfolio.axioma(ia,constraints)	 
+	round(weight - w1,2)
+	weight = w1
+	points(100 * portfolio.risk(weight,ia), 100 * portfolio.return(weight,ia), pch=15, col='cyan')
+	portfolio.return(weight,ia) /  portfolio.risk(weight,ia)
+	
+	# Maximum diversification portfolio is a max Sharpe portfolio, 
+	# but we substitute *Expected Return* with *Risk* in the objective function
+	weight = max.div.portfolio(ia, constraints)
+	w1 = max.sharpe.portfolio.axioma(ia,constraints, excess.return=ia$risk)	 
+	round(weight - w1,2)
+	weight = w1	
+	points(100 * portfolio.risk(weight,ia), 100 * portfolio.return(weight,ia), pch=15, col='blue')
+	portfolio.return(weight,ia) /  portfolio.risk(weight,ia)
+	
+	
+
+	
+		
 	plota.legend('Minimum Variance,Maximum Sharpe','red,orange', x='topright')
 	
 dev.off()	
+	
+	
+	
 	
 	#*****************************************************************
 	# Examples of Maximum Sharpe or Tangency portfolios construction
@@ -1207,6 +1325,203 @@ dev.off()
 		
 }
 
+
+# When all asset Sharpe Ratios are equal, this MDP portfolio will 
+# have the highest possible Sharpe Ratio. 
+# https://www.putnam.com/literature/pdf/whitepaper_parity_strategies.pdf
+max.div.portfolio.test <- function() 
+{
+
+	#*****************************************************************
+	# Load historical data
+	#****************************************************************** 
+	load.packages('quantmod')
+		
+	tickers = spl('SPY,QQQ,EEM,IWM,EFA,TLT,IYR,GLD')
+	
+	data = env()
+	getSymbols.extra(tickers, src = 'yahoo', from = '1980-01-01', env = data, set.symbolnames = T, auto.assign = T)
+		for(i in data$symbolnames) data[[i]] = adjustOHLC(data[[i]], use.Adjusted=T)
+	bt.prep(data, align='keep.all', fill.gaps = T)
+
+	#*****************************************************************
+	# Setup
+	#*****************************************************************
+	prices = data$prices
+	
+	period.ends = date.ends(prices, 'month')
+
+	hist.returns = prices[period.ends] / mlag(prices[period.ends]) - 1
+	
+	# Create historical input assumptions
+	ia = create.historical.ia(hist.returns, 12)
+	
+	constraints = create.basic.constraints(ia$n, 0, 1, 1)
+	
+	load.packages('quadprog,corpcor,lpSolve,kernlab')
+
+	sol1 = max.div.portfolio(ia, constraints)
+	
+	#*****************************************************************
+	# Replication
+	#*****************************************************************	
+	# Properties of the Most Diversified Portfolio by Yves Choueifaty
+	# http://papers.ssrn.com/sol3/papers.cfm?abstract_id=1895459
+	# p21 min wEw s.t. w[i] > 0 and Sum(w[i] * sigma[i]) = 1
+	# normalize weights to sum up to 1	
+	max.div.portfolio2 <- function
+	(
+		ia,				# input assumptions
+		constraints		# constraints
+	)
+	{
+		risk.index = get.risky.asset.index(ia)
+
+		constraints = new.constraints(ia$n, lb = 0)
+ 		constraints = add.constraints(diag(ia$n), type = ">=", b = 0, constraints)
+			constraints = add.constraints(ia$risk, type = '=', b = 1, constraints)	
+		x = min.var.portfolio(ia, constraints)
+		
+		# normalize weights to sum up to 1
+		set.risky.asset(x / sum(x), risk.index)
+	}
+	
+	sol2 = max.div.portfolio2(ia, constraints)
+	
+	# weights
+	round(100*cbind(sol1,sol2),2)
+		
+	# risk contributions
+	round(100*t(portfolio.risk.contribution(rbind(sol1,sol2), ia)),2)
+			
+	#*****************************************************************
+	# Example from paper: Base
+	#*****************************************************************	
+	ia = list(
+		n = 2,
+		symbols = spl('A,B'),
+		risk = c(20, 10) / 100,
+		correlation = matrix(c(1, 0.5, 0.5, 1), 2, 2),
+		expected.return = c(1,1)		
+	)
+	ia$cov = ia$correlation * (ia$risk %*% t(ia$risk))
+	ia.base = ia
+	
+	constraints = create.basic.constraints(ia$n, 0, 1, 1)
+	
+	sol = list(
+	EW = equal.weight.portfolio(ia, constraints),
+	ERC = equal.risk.contribution.portfolio(ia, constraints),
+	MV = min.var.portfolio(ia, constraints),
+	MDP = max.div.portfolio(ia, constraints),
+	MDP2 = max.div.portfolio1(ia, constraints)
+	)
+	
+	# weights
+	round(100*t(sapply(sol,c)))
+		
+	# risk contributions
+	round(100*portfolio.risk.contribution(t(sapply(sol,c)), ia))
+		
+	#*****************************************************************
+	# Example from paper: Duplication
+	#*****************************************************************	
+	ia = list(
+		n = 3,
+		symbols = spl('A,A1,B'),
+		risk = c(20, 20, 10) / 100,
+		correlation = matrix(c(1, 1, 0.5, 1, 1, 0.5, 0.5, 0.5, 1), 3, 3),
+		expected.return = c(1,1,1)		
+	)
+	ia$cov = ia$correlation * (ia$risk %*% t(ia$risk))
+	
+	constraints = create.basic.constraints(ia$n, 0, 1, 1)
+	
+	sol = list(
+	EW = equal.weight.portfolio(ia, constraints),
+	ERC = equal.risk.contribution.portfolio(ia, constraints),
+	MV = min.var.portfolio(ia, constraints),
+	MDP = max.div.portfolio(ia, constraints),
+	MDP2 = max.div.portfolio1(ia, constraints)
+	)
+	
+	# weights
+	weights = t(sapply(sol,c))
+	round(100*weights)
+		
+	weights.base = cbind(rowSums(weights[,1:2]), weights[,3])
+	round(100*weights.base)
+	
+	# risk contributions
+	round(100*portfolio.risk.contribution(weights.base, ia.base))
+	
+	#*****************************************************************
+	# Example from paper: Leverage
+	#*****************************************************************	
+	ia = list(
+		n = 2,
+		symbols = spl('LA,B'),
+		risk = c(5, 10) / 100,
+		correlation = matrix(c(1, 0.5, 0.5, 1), 2, 2),
+		expected.return = c(1,1)		
+	)
+	ia$cov = ia$correlation * (ia$risk %*% t(ia$risk))
+	
+	constraints = create.basic.constraints(ia$n, 0, 1, 1)
+	
+	sol = list(
+	EW = equal.weight.portfolio(ia, constraints),
+	ERC = equal.risk.contribution.portfolio(ia, constraints),
+	MV = min.var.portfolio(ia, constraints),
+	MDP = max.div.portfolio(ia, constraints),
+	MDP2 = max.div.portfolio1(ia, constraints)
+	)
+	
+	# weights
+	weights = t(sapply(sol,c))
+	round(100*weights)
+		
+	weights.base = cbind(weights[,1] / 4, weights[,2])	
+		weights.base = weights.base/rowSums(weights.base)
+	round(100*weights.base)
+	
+	
+	# risk contributions
+	round(100*portfolio.risk.contribution(weights.base, ia.base))
+	
+	#*****************************************************************
+	# Example from paper: Polico
+	#*****************************************************************	
+	ia = list(
+		n = 3,
+		symbols = spl('A,B,Polico'),
+		risk = c(20, 10, 11.46) / 100,
+		correlation = matrix(c(1, 0.5, 0.982, 0.5, 1, 0.655, 0.982, 0.655, 1), 3, 3),
+		expected.return = c(1,1,1)		
+	)
+	ia$cov = ia$correlation * (ia$risk %*% t(ia$risk))
+	
+	constraints = create.basic.constraints(ia$n, 0, 1, 1)
+	
+	sol = list(
+	EW = equal.weight.portfolio(ia, constraints),
+	ERC = equal.risk.contribution.portfolio(ia, constraints),
+	MV = min.var.portfolio(ia, constraints),
+	MDP = max.div.portfolio(ia, constraints),
+	MDP2 = max.div.portfolio1(ia, constraints)
+	)
+	
+	# weights
+	weights = t(sapply(sol,c))
+	round(100*weights)
+		
+	weights.base = cbind(weights[,1] +  1/2 * weights[,3], weights[,2] +  1/4 * weights[,3])	
+		weights.base = weights.base/rowSums(weights.base)
+	round(100*weights.base)
+	
+	# risk contributions
+	round(100*portfolio.risk.contribution(weights.base, ia.base))	
+}
 
 #*****************************************************************
 # Max Sharpe portfolio using non-linear solver, based on
@@ -1735,7 +2050,6 @@ min.var2 <- function(power.function = 1)
 	#
 	# Shrinks towards constant correlation matrix, Ledoit and Wolf (2004)
 	#
-	# x = as.matrix(read.csv('c:/Michael_Kapler/Soft/R/ira/test.csv', header =F))
 	# x=matrix(rnorm(3*200),200,3)
 	# covCor(x)
 	#
@@ -1870,15 +2184,17 @@ min.var2 <- function(power.function = 1)
 #' @export 		
 static.group <- function(group) 
 {	
-	group = group
+	group = as.numeric(group)
 	function
 	(
 		ia			# input assumptions
 	)
 	{
-		return(group[ia$index])	
+		group[ia$index]
 	}		
 }		
+	
+	
 	
 	
 	# Find groups using clustering algorithm
@@ -1973,7 +2289,6 @@ static.group <- function(group)
 # Idea by David Varadi	
 # http://cssanalytics.wordpress.com/2013/11/26/fast-threshold-clustering-algorithm-ftca/
 # Original code by Pierre Chretien
-# Small updates by Michael Kapler 	
 #' @export
 cluster.group.FTCA <- function
 (
@@ -2162,18 +2477,23 @@ dev.off()
 			if(!is.function(group.fn)) return(fn(ia, constraints))
 			
 			group = as.numeric(group.fn(ia))
-				
-			ngroups = max(group)
-			if(ngroups == 1) return(fn(ia, constraints))
+
+			groups = unique(group[!is.na(group)])
+				ngroups = len(groups)
+			if(ngroups == 1) return(fn.within(ia, constraints))
+			
 					
-			weight0 = rep(NA, ia$n)
+			weight0 = rep(0, ia$n)
+			
+			if(ngroups == 0) return(weight0)
+			group[is.na(group)] = Inf			
 				
 			# returns for each group			
 			hist.g = NA * ia$hist.returns[,1:ngroups]
 				
 			# compute weights within each group	
 			for(g in 1:ngroups) {
-				index = group == g
+				index = group == groups[g]
 				if( sum(index) == 1 ) {
 					weight0[index] = 1
 					hist.g[,g] = ia$hist.returns[, index, drop=F]
@@ -2198,9 +2518,9 @@ dev.off()
 			# find group weights
 			group.weights = match.fun(fn)(ia.g, constraints.g)
 					
-			# mutliply out group.weights by within group weights
+			# multiply out group.weights by within group weights			
 			for(g in 1:ngroups)
-					weight0[group == g] = weight0[group == g] * group.weights[g]
+					weight0[group == groups[g]] = weight0[group == groups[g]] * group.weights[g]
 			
 			weight0			
 		}

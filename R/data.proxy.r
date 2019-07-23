@@ -1,22 +1,23 @@
 ###############################################################################
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+# 
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+# 
+# 1. The origin of this software must not be misrepresented; you must not
+#    claim that you wrote the original software. If you use this software
+#    in a product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
-# Collection of routines to examine and compare proxies and data
-# Copyright (C) 2013  Michael Kapler
+# Collection of routines to examine and compare data proxies
 #
-# For more information please visit my blog at www.SystematicInvestor.wordpress.com
-# or drop me a line at TheSystematicInvestor at gmail
+# For more information please email at TheSystematicInvestor at gmail
 ###############################################################################
 
 
@@ -43,8 +44,8 @@ compute.cor <- function
 ###############################################################################
 #' Plot proxies and create summary table over common period
 #'
-#' @param data.all list or enviroment that holds proxy time series 
-#' @param names names or indexs of time series, \strong{defaults to all time series} 
+#' @param data.all list or environment that holds proxy time series 
+#' @param names names or indexes of time series, \strong{defaults to all time series} 
 #' @param price.fn name of price function, \strong{defaults to Ad} 
 #'
 #' @return nothing
@@ -109,8 +110,8 @@ layout(1)
 ###############################################################################
 #' Plot 12 Month Spread for 2 symbols over common period
 #'
-#' @param data.all list or enviroment that holds proxy time series 
-#' @param names names or indexs of time series, \strong{defaults to all time series} 
+#' @param data.all list or environment that holds proxy time series 
+#' @param names names or indexes of time series, \strong{defaults to all time series} 
 #' @param price.fn name of price function, \strong{defaults to Ad} 
 #'
 #' @return nothing
@@ -154,8 +155,8 @@ plot12month.rolling.spread <- function(data.all, names = ls(data.all), price.fn=
 ###############################################################################
 #' Plot all proxies overlaying the longest one
 #'
-#' @param data.all list or enviroment that holds proxy time series 
-#' @param names names or indexs of time series, \strong{defaults to all time series} 
+#' @param data.all list or environment that holds proxy time series 
+#' @param names names or indexes of time series, \strong{defaults to all time series} 
 #' @param price.fn name of price function, \strong{defaults to Ad} 
 #'
 #' @return nothing
@@ -196,8 +197,8 @@ proxy.overlay.plot <- function(data.all, names = ls(data.all), price.fn=Ad)
 ###############################################################################
 #' Plot complete history for each index for Close and Adjusted, and create summary table
 #'
-#' @param data list or enviroment that holds proxy time series 
-#' @param names names or indexs of time series, \strong{defaults to all time series} 
+#' @param data list or environment that holds proxy time series 
+#' @param names names or indexes of time series, \strong{defaults to all time series} 
 #'
 #' @return nothing
 #'
